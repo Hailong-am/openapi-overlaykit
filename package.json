@@ -1,0 +1,51 @@
+{
+  "name": "openapi-overlaykit",
+  "version": "0.1.0",
+  "description": "Apply OpenAPI Overlay 1.0.0 documents using a strict, RFC 9535-compliant JSONPath engine (no eval).",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Hailong",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hailong-am/openapi-overlaykit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Hailong-am/openapi-overlaykit/issues"
+  },
+  "homepage": "https://github.com/Hailong-am/openapi-overlaykit#readme",
+  "keywords": [
+    "openapi",
+    "overlay",
+    "openapi-overlay",
+    "oas",
+    "jsonpath",
+    "rfc9535",
+    "swagger"
+  ],
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "openapi-overlaykit": "bin/cli.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "lint": "node --check src/index.js && node --check src/overlay.js && node --check bin/cli.js"
+  },
+  "dependencies": {
+    "@swaggerexpert/jsonpath": "^4.0.5",
+    "mergician": "^2.0.0",
+    "yaml": "^2.5.0"
+  }
+}

@@ -1,0 +1,50 @@
+openapi: 3.1.0
+info:
+  title: Town API
+  version: 1.0.0
+paths:
+  /buildings:
+    get:
+      tags:
+        - Enterprise-Only
+      summary: List buildings
+      responses:
+        '200':
+          description: A list of buildings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Building'
+  /buildings/{buildingId}:
+    get:
+      tags:
+        - public
+      summary: Get a building
+      parameters:
+        - name: buildingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A building
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
+  /ping:
+    post:
+      summary: Ping
+      responses:
+        '204':
+          description: No content
+components:
+  schemas:
+    Building:
+      type: object
+      properties:
+        name:
+          type: string
