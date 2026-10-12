@@ -32,7 +32,7 @@
     }
   },
   "bin": {
-    "openapi-overlaykit": "dist/cli.js"
+    "openapi-overlaykit": "dist/cli/index.js"
   },
   "files": [
     "dist",

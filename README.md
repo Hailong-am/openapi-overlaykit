@@ -107,12 +107,23 @@ npm test           # run tests (tsx + node:test)
 
 Source layout:
 
-| Path | Purpose |
-|---|---|
-| `src/overlay.ts` | engine: `matchPaths` (RFC 9535 query) + `applyOverlay` |
-| `src/index.ts` | library entry: public API + YAML/JSON file helpers |
-| `src/cli.ts` | CLI entry (compiles to `dist/cli.js`, the `bin`) |
-| `test/*.test.ts` | tests, including #42's RFC 9535 expressions |
+```
+src/
+├── engine/              # core overlay engine (framework-agnostic, no I/O)
+│   ├── types.ts         # JsonValue, OverlayAction, OverlayDocument, SelectorPath
+│   ├── jsonpath.ts      # matchPaths — RFC 9535 query via @swaggerexpert/jsonpath
+│   ├── resolve.ts       # resolveParent — selector path → parent container + key
+│   ├── remove.ts        # applyRemove — descending-index splice / key delete
+│   ├── update.ts        # applyUpdate — deep-merge with per-target clone
+│   ├── apply.ts         # applyOverlay — orchestrates actions
+│   └── index.ts         # engine barrel (public engine surface)
+├── io.ts                # YAML/JSON parse + stringify + file helpers
+├── cli/                 # command-line interface
+│   ├── args.ts          # usage text + arg parsing
+│   ├── run.ts           # command logic
+│   └── index.ts         # bin entry (compiles to dist/cli/index.js)
+└── index.ts             # top-level library barrel (public API)
+```
 
 ## License
 
