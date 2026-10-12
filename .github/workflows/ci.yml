@@ -26,6 +26,10 @@ jobs:
           cache: npm
       - name: Install (clean, from lockfile)
         run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
       - name: Lint
         run: npm run lint
       - name: Test

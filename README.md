@@ -92,6 +92,28 @@ Targets are **strict RFC 9535**. A few consequences worth knowing:
   matching `$ref`, not the `$ref` string itself. To target the `$ref` node
   directly, use `$..['$ref']`.
 
+## Development
+
+Written in TypeScript. The published package ships compiled output and type
+declarations from `dist/`.
+
+```sh
+npm install        # install dependencies
+npm run typecheck  # type-check without emitting
+npm run build      # compile src/ -> dist/
+npm run lint       # ESLint (typescript-eslint)
+npm test           # run tests (tsx + node:test)
+```
+
+Source layout:
+
+| Path | Purpose |
+|---|---|
+| `src/overlay.ts` | engine: `matchPaths` (RFC 9535 query) + `applyOverlay` |
+| `src/index.ts` | library entry: public API + YAML/JSON file helpers |
+| `src/cli.ts` | CLI entry (compiles to `dist/cli.js`, the `bin`) |
+| `test/*.test.ts` | tests, including #42's RFC 9535 expressions |
+
 ## License
 
 [Apache-2.0](./LICENSE)

@@ -20,18 +20,22 @@
     "oas",
     "jsonpath",
     "rfc9535",
-    "swagger"
+    "swagger",
+    "typescript"
   ],
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "bin": {
-    "openapi-overlaykit": "bin/cli.js"
+    "openapi-overlaykit": "dist/cli.js"
   },
   "files": [
-    "src",
-    "bin",
+    "dist",
     "LICENSE",
     "NOTICE",
     "README.md"
@@ -40,12 +44,24 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test",
-    "lint": "node --check src/index.js && node --check src/overlay.js && node --check bin/cli.js"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "node --import tsx --test test/**/*.test.ts",
+    "clean": "node --eval \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {
     "@swaggerexpert/jsonpath": "^4.0.5",
     "mergician": "^2.0.0",
     "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.12.0",
+    "@types/node": "^22.7.0",
+    "eslint": "^9.12.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.8.0"
   }
 }

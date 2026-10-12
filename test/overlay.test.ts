@@ -5,9 +5,16 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import YAML from 'yaml';
 import { applyOverlay, matchPaths } from '../src/index.js';
+import type { JsonObject } from '../src/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const townDoc = () => YAML.parse(readFileSync(join(here, 'fixtures/town.yaml'), 'utf8'));
+const townDoc = (): JsonObject =>
+  YAML.parse(readFileSync(join(here, 'fixtures/town.yaml'), 'utf8')) as JsonObject;
+
+/** Loosely-typed view for ergonomic deep property access in assertions. */
+interface Rec {
+  [key: string]: Rec;
+}
 
 test('update: deep-merges into every matched node (nested filter + &&, #42 example 1)', () => {
   const doc = townDoc();
@@ -21,7 +28,7 @@ test('update: deep-merges into every matched node (nested filter + &&, #42 examp
         update: { 'x-internal': true },
       },
     ],
-  });
+  }) as Rec;
 
   // Only the Enterprise-Only operation gets x-internal.
   assert.equal(result.paths['/buildings'].get['x-internal'], true);
@@ -38,7 +45,7 @@ test('remove: deletes the $ref node directly (object + array parents, descending
       // Standard RFC 9535: bracket member access selects the $ref node itself.
       { target: "$..['$ref']", remove: true },
     ],
-  });
+  }) as Rec;
 
   // Both $ref nodes are gone; the Building schema DEFINITION remains (not a $ref).
   const asText = JSON.stringify(result);
@@ -61,7 +68,7 @@ test('remove: match() selects the CONTAINER of a matching $ref (RFC 9535 node se
       // $ref is the containing object, so removing it deletes the whole wrapper.
       { target: "$..[?match(@['$ref'], '.*Building')]", remove: true },
     ],
-  });
+  }) as Rec;
 
   // The object schema wrapper (which held the $ref) is gone entirely.
   const objContent =
@@ -78,7 +85,7 @@ test('remove: negation selects the path item lacking get (#42 example 2)', () =>
       // #42 example 2, verbatim RFC 9535 negation syntax.
       { target: '$.paths[?!@.get]', remove: true },
     ],
-  });
+  }) as Rec;
 
   // /ping (post only, no get) is removed; the two get-bearing paths remain.
   assert.equal(result.paths['/ping'], undefined);
@@ -104,7 +111,7 @@ test('update: each target receives an independent clone (no shared reference)', 
     overlay: '1.0.0',
     info: { title: 'u', version: '1.0.0' },
     actions: [{ target: '$.paths.*.get', update: { 'x-added': { nested: true } } }],
-  });
+  }) as Rec;
 
   const a = result.paths['/a'].get['x-added'];
   const b = result.paths['/b'].get['x-added'];
