@@ -143,3 +143,137 @@ test('throws on an action with neither update nor remove', () => {
     /neither "update" nor "remove: true"/,
   );
 });
+
+test('remove: multiple elements in the same array splice descending (no index shift)', () => {
+  const doc = {
+    list: ['keep0', 'drop1', 'keep2', 'drop3', 'drop4', 'keep5'],
+  };
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    // match every element whose value starts with "drop"
+    actions: [{ target: "$.list[?match(@, 'drop.*')]", remove: true }],
+  }) as unknown as { list: string[] };
+
+  assert.deepEqual(result.list, ['keep0', 'keep2', 'keep5']);
+});
+
+test('remove: deletes an entire path item (object property by key)', () => {
+  const doc = townDoc();
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: "$.paths['/ping']", remove: true }],
+  }) as Rec;
+
+  assert.equal(result.paths['/ping'], undefined);
+  assert.ok(result.paths['/buildings'], 'sibling paths are untouched');
+});
+
+test('remove: a target matching the document root is a no-op (cannot delete root)', () => {
+  const doc = townDoc();
+  const before = JSON.stringify(doc);
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: '$', remove: true }],
+  });
+  assert.equal(JSON.stringify(result), before, 'root removal does nothing');
+});
+
+test('remove: a target that matches nothing is a silent no-op', () => {
+  const doc = townDoc();
+  const before = JSON.stringify(doc);
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: "$.paths['/does-not-exist']", remove: true }],
+  });
+  assert.equal(JSON.stringify(result), before, 'no match leaves the doc unchanged');
+});
+
+test('update: appendArrays extends an existing array (Overlay convention)', () => {
+  const doc = { paths: { '/a': { get: { tags: ['x'] } } } };
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: "$.paths['/a'].get", update: { tags: ['y'] } }],
+  }) as Rec;
+
+  assert.deepEqual(result.paths['/a'].get.tags, ['x', 'y'] as unknown as Rec);
+});
+
+test('update: overwrites when the target resolves to a primitive', () => {
+  const doc = { info: { version: '1.0.0' } };
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: '$.info.version', update: '2.0.0' as unknown as never }],
+  }) as Rec;
+
+  assert.equal(result.info.version as unknown as string, '2.0.0');
+});
+
+test('apply: actions run in order, later actions see earlier results', () => {
+  const doc = { paths: { '/a': { get: {} }, '/b': { get: { tags: ['pre'] } } } };
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [
+      // 1) tag /a.get — before this runs, no operation has the 'added' tag
+      { target: "$.paths['/a'].get", update: { tags: ['added'] } },
+      // 2) select operations whose tags include 'added'; only matches because (1) ran first
+      {
+        target: "$.paths.*[?@.tags[?@ == 'added']]",
+        update: { 'x-seen': true },
+      },
+    ],
+  }) as Rec;
+
+  // /a.get was tagged then marked; /b.get (tag 'pre') is never marked.
+  assert.deepEqual(result.paths['/a'].get.tags, ['added'] as unknown as Rec);
+  assert.equal(result.paths['/a'].get['x-seen'] as unknown as boolean, true);
+  assert.equal(result.paths['/b'].get['x-seen'], undefined);
+});
+
+test('apply: an overlay with no actions returns an unchanged clone', () => {
+  const doc = townDoc();
+  const before = JSON.stringify(doc);
+  const result = applyOverlay(doc, { overlay: '1.0.0', info: { title: 'u', version: '1.0.0' } });
+  assert.equal(JSON.stringify(result), before);
+  assert.notEqual(result, doc, 'result is a distinct clone, not the same reference');
+});
+
+test('apply: throws on a non-object overlay', () => {
+  assert.throws(
+    () => applyOverlay({ paths: {} }, null as unknown as never),
+    /overlay must be an object/,
+  );
+});
+
+test('apply: throws when an action is missing a string target', () => {
+  assert.throws(
+    () =>
+      applyOverlay(
+        { paths: {} },
+        {
+          overlay: '1.0.0',
+          info: { title: 'u', version: '1.0.0' },
+          actions: [{ update: { x: 1 } } as unknown as { target: string }],
+        },
+      ),
+    /requires a string "target"/,
+  );
+});
+
+test('matchPaths: a non-matching target returns an empty array', () => {
+  const doc = townDoc();
+  assert.deepEqual(matchPaths(doc, "$.paths['/nope']"), []);
+});
+
+test('matchPaths: wildcard over paths returns one selector per path item', () => {
+  const doc = townDoc();
+  const paths = matchPaths(doc, '$.paths.*');
+  assert.equal(paths.length, 3);
+  for (const p of paths) assert.equal(p[0], 'paths');
+});
