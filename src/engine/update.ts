@@ -21,7 +21,19 @@ export function applyUpdate(doc: unknown, target: string, update: JsonValue): vo
     const { parent, key } = resolved;
     const container = parent as Record<string | number, unknown>;
     const current = container[key];
-    if (current && typeof current === 'object') {
+    if (Array.isArray(current)) {
+      // Overlay 1.0.0: updating an array target APPENDS to the array; it never
+      // index-merges (mergician treats arrays as index-keyed objects, which
+      // corrupts `[a, b]` + `[c]` into `{0: c, 1: b}`). An array update value
+      // is concatenated (its elements appended); any other value is appended as
+      // a single new element.
+      const clone = structuredClone(update);
+      if (Array.isArray(clone)) {
+        current.push(...clone);
+      } else {
+        current.push(clone);
+      }
+    } else if (current && typeof current === 'object') {
       container[key] = mergeUpdate(current as object, structuredClone(update) as object);
     } else {
       // Target resolved to a primitive (or missing): overwrite with a clone.
