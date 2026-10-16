@@ -4,11 +4,14 @@ name: Release
 #
 # Release flow:
 #   1. bump the version in package.json and commit it to main
-#   2. tag that commit  `git tag v0.1.2 && git push origin v0.1.2`
-#   3. this workflow runs the full gate, creates the GitHub Release, and
-#      publishes to npm (if NPM_TOKEN is set)
+#   2. tag that commit  `git tag v0.1.2` and push the tag
+#   3. this workflow runs the full gate, then WAITS for manual approval on the
+#      `release` environment before it creates the GitHub Release and publishes
+#      to npm (if NPM_TOKEN is set)
 #
 # The tag MUST match the version in package.json; the workflow fails otherwise.
+# One-time setup: repo Settings -> Environments -> `release` -> add required
+# reviewers (that is the approval gate).
 
 on:
   push:
@@ -50,6 +53,11 @@ jobs:
     name: GitHub Release + npm publish
     needs: verify
     runs-on: ubuntu-latest
+    # Protected environment: configure required reviewers on it (repo Settings ->
+    # Environments -> release) so this job PAUSES for manual approval before it
+    # creates the release or publishes to npm. The `verify` tests run first,
+    # without approval; nothing is published until a reviewer approves.
+    environment: release
     permissions:
       contents: write # create the GitHub Release
       id-token: write # npm provenance (OIDC)
