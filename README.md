@@ -39,8 +39,13 @@ openapi-overlaykit --openapi api.yaml --overlay overlay.yaml --output out.yaml
 | `--overlay`, `-o` | Overlay 1.0.0 document (YAML or JSON) — **required** |
 | `--output`, `-f` | write result to a file (default: stdout) |
 | `--format` | output format: `yaml` (default) or `json` |
+| `--yaml-line-width` | wrap column for YAML output; `0` disables wrapping (default: `0`) |
+| `--yaml-quote` | scalar quote style for YAML output: `single` (default) or `double` |
 
 Output format is inferred from the output file extension when `--format` is omitted.
+YAML output defaults to no line-wrapping and literal (`|-`) block scalars, so
+Markdown-bearing fields round-trip unchanged; `--yaml-line-width` and
+`--yaml-quote` adjust the house style.
 
 ## Library
 

@@ -33,8 +33,36 @@ test('parseDocument: parses JSON (YAML is a JSON superset)', () => {
 
 test('stringifyDocument: defaults to YAML', () => {
   const out = stringifyDocument({ a: 1, b: ['x'] });
-  assert.equal(out, YAML.stringify({ a: 1, b: ['x'] }));
+  assert.equal(out, YAML.stringify({ a: 1, b: ['x'] }, { lineWidth: 0, blockQuote: 'literal' }));
   assert.deepEqual(parseDocument(out), { a: 1, b: ['x'] });
+});
+
+test('stringifyDocument: caller yamlOptions override the defaults (quote style)', () => {
+  const value = { ref: '#/components/schemas/A' };
+  const dflt = stringifyDocument(value);
+  const single = stringifyDocument(value, 'yaml', { singleQuote: true });
+  assert.match(dflt, /"#\/components\/schemas\/A"/, 'library default double-quotes this string');
+  assert.match(single, /'#\/components\/schemas\/A'/, 'singleQuote override emits single quotes');
+  assert.deepEqual(parseDocument(single), value);
+});
+
+test('stringifyDocument: multi-line strings stay literal (|-), never folded (>-)', () => {
+  const out = stringifyDocument({ description: 'line one\nline two\nline three' });
+  assert.match(out, /description: \|-/, 'uses a literal block scalar');
+  assert.doesNotMatch(out, />-/, 'never a folded block scalar');
+  assert.equal(
+    (parseDocument(out) as { description: string }).description,
+    'line one\nline two\nline three',
+  );
+});
+
+test('stringifyDocument: long lines are not wrapped (lineWidth 0)', () => {
+  const long =
+    'REST API reference for Amazon OpenSearch Service, the managed OpenSearch offering, with a deliberately long single line well past the eighty column default.';
+  const out = stringifyDocument({ description: long });
+  const body = out.split('\n').filter((l) => l.includes('OpenSearch'));
+  assert.equal(body.length, 1, 'the long line is emitted unwrapped on a single line');
+  assert.equal((parseDocument(out) as { description: string }).description, long);
 });
 
 test('stringifyDocument: json format emits pretty JSON with a trailing newline', () => {

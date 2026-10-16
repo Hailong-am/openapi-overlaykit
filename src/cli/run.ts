@@ -34,7 +34,7 @@ export async function run(argv: string[]): Promise<void> {
 
   const format: OutputFormat =
     args.format ?? (args.output?.endsWith('.json') ? 'json' : 'yaml');
-  const out = stringifyDocument(result, format);
+  const out = stringifyDocument(result, format, args.yaml);
 
   if (args.output) {
     await writeFile(args.output, out, 'utf8');
