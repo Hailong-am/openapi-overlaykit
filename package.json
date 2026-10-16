@@ -1,6 +1,6 @@
 {
   "name": "openapi-overlaykit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Apply OpenAPI Overlay 1.0.0 documents using a strict, RFC 9535-compliant JSONPath engine (no eval).",
   "type": "module",
   "license": "Apache-2.0",
