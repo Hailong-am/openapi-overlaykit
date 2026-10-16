@@ -203,6 +203,47 @@ test('update: appendArrays extends an existing array (Overlay convention)', () =
   assert.deepEqual(result.paths['/a'].get.tags, ['x', 'y'] as unknown as Rec);
 });
 
+test('update: appends to an ARRAY target with an array value (concatenates, Overlay §4.4.3)', () => {
+  // Regression: an `update` targeting an array node must APPEND, not index-merge.
+  // mergician treats arrays as index-keyed objects, so [A, B] merged with [C]
+  // became {0: C, 1: B} (array corrupted, element A lost). The spec appends.
+  const doc = { tags: [{ name: 'A' }, { name: 'B' }] };
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: '$.tags', update: [{ name: 'C' }, { name: 'D' }] as unknown as never }],
+  }) as unknown as { tags: { name: string }[] };
+
+  assert.ok(Array.isArray(result.tags), 'target stays an array');
+  assert.deepEqual(result.tags, [{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }]);
+});
+
+test('update: appends a non-array value to an ARRAY target as a single element', () => {
+  const doc = { tags: [{ name: 'A' }] };
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: '$.tags', update: { name: 'B' } }],
+  }) as unknown as { tags: { name: string }[] };
+
+  assert.ok(Array.isArray(result.tags), 'target stays an array');
+  assert.deepEqual(result.tags, [{ name: 'A' }, { name: 'B' }]);
+});
+
+test('update: array append clones per target (no shared reference between pushes)', () => {
+  const doc = { a: { list: [] as unknown[] }, b: { list: [] as unknown[] } };
+  const result = applyOverlay(doc, {
+    overlay: '1.0.0',
+    info: { title: 'u', version: '1.0.0' },
+    actions: [{ target: '$.*.list', update: [{ nested: true }] as unknown as never }],
+  }) as unknown as { a: { list: { nested: unknown }[] }; b: { list: { nested: unknown }[] } };
+
+  assert.deepEqual(result.a.list, [{ nested: true }]);
+  assert.deepEqual(result.b.list, [{ nested: true }]);
+  result.a.list[0]!.nested = 'changed';
+  assert.equal(result.b.list[0]!.nested, true, 'appended elements must not share a reference');
+});
+
 test('update: overwrites when the target resolves to a primitive', () => {
   const doc = { info: { version: '1.0.0' } };
   const result = applyOverlay(doc, {
