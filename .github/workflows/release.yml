@@ -1,0 +1,112 @@
+name: Release
+
+# Publish a GitHub Release (and npm package) when a version tag is pushed.
+#
+# Release flow:
+#   1. bump the version in package.json and commit it to main
+#   2. tag that commit  `git tag v0.1.2` and push the tag
+#   3. this workflow runs the full gate, then WAITS for manual approval on the
+#      `release` environment before it creates the GitHub Release and publishes
+#      to npm (if NPM_TOKEN is set)
+#
+# The tag MUST match the version in package.json; the workflow fails otherwise.
+# One-time setup: repo Settings -> Environments -> `release` -> add required
+# reviewers (that is the approval gate).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  # Reuse the same gate as CI so a tag can never publish untested code.
+  verify:
+    name: verify (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['18', '20', '22', '24']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install (clean, from lockfile)
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+
+  release:
+    name: GitHub Release + npm publish
+    needs: verify
+    runs-on: ubuntu-latest
+    # Protected environment: configure required reviewers on it (repo Settings ->
+    # Environments -> release) so this job PAUSES for manual approval before it
+    # creates the release or publishes to npm. The `verify` tests run first,
+    # without approval; nothing is published until a reviewer approves.
+    environment: release
+    permissions:
+      contents: write # create the GitHub Release
+      id-token: write # npm provenance (OIDC)
+    env:
+      # Lifted to job scope so the publish/skip step `if:` conditions can read it
+      # (a step's own `env` is not available to its own `if:`).
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - name: Verify the tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag does not match package.json version $pkg" >&2
+            exit 1
+          fi
+          echo "tag and package.json agree on $pkg"
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
+
+      - name: Publish to npm (with provenance)
+        if: ${{ env.NPM_TOKEN != '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: Note when npm publish is skipped
+        if: ${{ env.NPM_TOKEN == '' }}
+        run: echo "::notice::NPM_TOKEN secret not set — GitHub Release created, npm publish skipped."
